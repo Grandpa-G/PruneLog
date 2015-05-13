@@ -62,7 +62,7 @@ namespace PruneLog
             Commands.ChatCommands.Add(new Command("PruneLog.allow", pruneLog, "prunelogs"));
             Commands.ChatCommands.Add(new Command("PruneLog.allow", pruneLog, "pl"));
 
-            var path = Path.Combine(TShock.SavePath, "prunelogs.json");
+            var path = Path.Combine(TShock.SavePath, "prunelog.json");
             (pruneLogConfig = Config.Read(path)).Write(path);
 
             keepOnlyLogs = pruneLogConfig.keepOnlyLogs;
@@ -100,7 +100,7 @@ namespace PruneLog
 
             if (arguments.Contains("-r") || arguments.Contains("-reload"))
             {
-                var path = Path.Combine(TShock.SavePath, "prunelogs.json");
+                var path = Path.Combine(TShock.SavePath, "prunelog.json");
                 pruneLogConfig = Config.Read(path);
                 keepOnlyLogs = pruneLogConfig.keepOnlyLogs;
                 keepForDays = pruneLogConfig.keepForDays;
@@ -166,8 +166,10 @@ namespace PruneLog
 
             if (arguments.Contains("-prune"))
             {
-                string[] logFilePaths = Directory.GetFiles(TShock.Config.LogPath, "*.log");
                 string logFilename = TShock.Log.FileName;
+
+                DirectoryInfo directoryInfo = new DirectoryInfo(TShock.Config.LogPath);
+                FileInfo[] files = directoryInfo.GetFiles("*.log", SearchOption.AllDirectories).OrderBy(t => t.CreationTime).ToArray();
 
                 int pruneCount = 0;
                 if (pruneByDate)
@@ -175,17 +177,16 @@ namespace PruneLog
                     DateTime keepDate = DateTime.Today.AddDays(-keepForDays);
 
                     if (keepForDays > 0)
-                        foreach (string file in logFilePaths)
+                        foreach (FileInfo f in files)
                         {
-                            FileInfo fi = new FileInfo(file);
-                            if (!fi.Name.Equals(TShock.Log.FileName))
+                            if (!f.Name.Equals(TShock.Log.FileName))
                             {
-                                if (fi.CreationTime < keepDate)
+                                if (f.CreationTime < keepDate)
                                 {
                                     if (!preview)
-                                        fi.Delete();
+                                        f.Delete();
                                     if (verbose)
-                                        Console.WriteLine("Prune: " + fi.Name);
+                                        Console.WriteLine("Prune: " + f.Name);
                                     pruneCount++;
                                 }
                             }
@@ -193,15 +194,14 @@ namespace PruneLog
                 }
                 else
                 {
-                    Array.Sort(logFilePaths);
-                    for (int i = logFilePaths.Count() - 1; i >= keepOnlyLogs; i--)
+                    for (int i = files.Count() - 1; i >= keepOnlyLogs; i--)
                     {
-                        if (!logFilePaths[i].Equals(TShock.Log.FileName))
+                        if (!files[i].Name.Equals(TShock.Log.FileName))
                         {
                             if (!preview)
-                                File.Delete(logFilePaths[i]);
+                                File.Delete(files[i].Name);
                             if (verbose)
-                                Console.WriteLine("Prune: " + logFilePaths[i]);
+                                Console.WriteLine("Prune: " + files[i].Name);
                             pruneCount++;
                         }
                     }
