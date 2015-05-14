@@ -9,6 +9,7 @@ using System.Data;
 using System.ComponentModel;
 using System.Reflection;
 using System.Drawing;
+using System.IO.Compression;
 
 using Terraria;
 using TShockAPI;
@@ -30,6 +31,7 @@ namespace PruneLog
         private static bool pruneByDate;
         private bool verbose = false;
         private bool preview = false;
+        private string archiveFileName;
         public override string Name
         {
             get { return "PruneLog"; }
@@ -59,8 +61,7 @@ namespace PruneLog
                 return;
             }
 
-            Commands.ChatCommands.Add(new Command("PruneLog.allow", pruneLog, "prunelogs"));
-            Commands.ChatCommands.Add(new Command("PruneLog.allow", pruneLog, "pl"));
+            Commands.ChatCommands.Add(new Command("PruneLog.allow", pruneLog, "prunelogs", "pl"));
 
             var path = Path.Combine(TShock.SavePath, "prunelog.json");
             (pruneLogConfig = Config.Read(path)).Write(path);
@@ -68,6 +69,7 @@ namespace PruneLog
             keepOnlyLogs = pruneLogConfig.keepOnlyLogs;
             keepForDays = pruneLogConfig.keepForDays;
             pruneByDate = pruneLogConfig.pruneByDate;
+            archiveFileName = pruneLogConfig.archiveFileName;
         }
         protected override void Dispose(bool disposing)
         {
@@ -85,16 +87,18 @@ namespace PruneLog
             {
                 args.Player.SendMessage("Syntax: /prunelog [-help] ", Color.Red);
                 args.Player.SendMessage("Flags: ", Color.LightSalmon);
-                args.Player.SendMessage(" -prune       starts prune operation", Color.LightSalmon);
-                args.Player.SendMessage(" -reload/-r   reloads options from prunelog.json config file", Color.LightSalmon);
-                args.Player.SendMessage(" -verbose/-v  show each file pruned", Color.LightSalmon);
-                args.Player.SendMessage(" -keep n      keeps n number of log files from most recent", Color.LightSalmon);
-                args.Player.SendMessage(" -days n      prunes any log files created before n days from today", Color.LightSalmon);
-                args.Player.SendMessage(" -bydays      prune criteria set by value of days (keepForDays option in config file)", Color.LightSalmon);
-                args.Player.SendMessage(" -bycount     prune criteria set by value of keep (keepOnlyLogs option in config file)", Color.LightSalmon);
-                args.Player.SendMessage(" -preview/p   performs prune action without actually deleting any files", Color.LightSalmon);
-                args.Player.SendMessage(" -list/l      show current prune criteria", Color.LightSalmon);
-                args.Player.SendMessage(" -help        this information", Color.LightSalmon);
+                args.Player.SendMessage(" -prune        starts prune operation", Color.LightSalmon);
+                args.Player.SendMessage(" -reload/-r    reloads options from prunelog.json config file", Color.LightSalmon);
+                args.Player.SendMessage(" -verbose/-v   show each file pruned", Color.LightSalmon);
+                args.Player.SendMessage(" -!verbose/-!v don't show each file pruned", Color.LightSalmon);
+                args.Player.SendMessage(" -keep n       keeps n number of log files from most recent", Color.LightSalmon);
+                args.Player.SendMessage(" -days n       prunes any log files created before n days from today", Color.LightSalmon);
+                args.Player.SendMessage(" -bydays       prune criteria set by value of days (keepForDays option in config file)", Color.LightSalmon);
+                args.Player.SendMessage(" -bycount      prune criteria set by value of keep (keepOnlyLogs option in config file)", Color.LightSalmon);
+                args.Player.SendMessage(" -preview/p    negates preview, thus files will be deleted", Color.LightSalmon);
+                args.Player.SendMessage(" -!preview/!p  performs prune action without actually deleting any files", Color.LightSalmon);
+                args.Player.SendMessage(" -list/l       show current prune criteria", Color.LightSalmon);
+                args.Player.SendMessage(" -help         this information", Color.LightSalmon);
                 return;
             }
 
@@ -131,7 +135,7 @@ namespace PruneLog
 
             if (arguments.Contains("-l") || arguments.Contains("-list"))
             {
-                Console.WriteLine("Current options for prune");
+                Console.WriteLine("Current options for PruneLog version " + Assembly.GetExecutingAssembly().GetName().Version);
                 Console.WriteLine(" keepForDays=" + keepForDays);
                 Console.WriteLine(" keepOnlyLogs=" + keepOnlyLogs);
                 Console.WriteLine(" pruneByDate is " + pruneByDate.ToString());
@@ -209,6 +213,56 @@ namespace PruneLog
                 Console.WriteLine(pruneCount + " logs Pruned");
                 return;
             }
+            /*
+            if (arguments.Contains("-a") || arguments.Contains("-archive"))
+            {
+                string logFilename = TShock.Log.FileName;
+
+                DirectoryInfo directoryInfo = new DirectoryInfo(TShock.Config.LogPath);
+                FileInfo[] files = directoryInfo.GetFiles("*.log", SearchOption.AllDirectories).OrderBy(t => t.CreationTime).ToArray();
+
+                int archiveCount = 0;
+                using (ZipArchive zip = ZipFile.Open(archiveFileName, ZipArchiveMode.Create))
+                {
+                    if (pruneByDate)
+                    {
+                        DateTime keepDate = DateTime.Today.AddDays(-keepForDays);
+
+                        if (keepForDays > 0)
+                            foreach (FileInfo f in files)
+                            {
+                                if (!f.Name.Equals(TShock.Log.FileName))
+                                {
+                                    if (f.CreationTime < keepDate)
+                                    {
+                                        if (!preview)
+                                            zip.CreateEntryFromFile(f.Name, f.Name);
+                                        if (verbose)
+                                            Console.WriteLine("Archive: " + f.Name);
+                                        archiveCount++;
+                                    }
+                                }
+                            }
+                    }
+                    else
+                    {
+                        for (int i = files.Count() - 1; i >= keepOnlyLogs; i--)
+                        {
+                            if (!files[i].Name.Equals(TShock.Log.FileName))
+                            {
+                                if (!preview)
+                                    zip.CreateEntryFromFile(files[i].Name, files[i].Name);
+                                if (verbose)
+                                    Console.WriteLine("Archive: " + files[i].Name);
+                                archiveCount++;
+                            }
+                        }
+                    }
+                 }
+                Console.WriteLine(archiveCount + " logs archived to " + archiveFileName);
+
+            }
+             * */
             Console.WriteLine(" Invalid PruneLog option:" + string.Join(" ", args.Parameters));
         }
     }
