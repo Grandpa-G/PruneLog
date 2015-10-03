@@ -13,8 +13,6 @@ using System.IO.Compression;
 
 using Terraria;
 using TShockAPI;
-using Mono.Data.Sqlite;
-using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using System.Threading;
 using TerrariaApi.Server;
@@ -22,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace PruneLog
 {
-    [ApiVersion(1, 17)]
+    [ApiVersion(1, 21)]
     public class PruneLog : TerrariaPlugin
     {
         private static Config pruneLogConfig;
@@ -180,17 +178,27 @@ namespace PruneLog
                 {
                     DateTime keepDate = DateTime.Today.AddDays(-keepForDays);
 
+                    string fileName; 
                     if (keepForDays > 0)
                         foreach (FileInfo f in files)
                         {
-                            if (!f.Name.Equals(TShock.Log.FileName))
+                            fileName = directoryInfo + "\\" + f.Name;
+                            if (!fileName.Equals(TShock.Log.FileName))
                             {
                                 if (f.CreationTime < keepDate)
                                 {
                                     if (!preview)
-                                        f.Delete();
+                                 try 
+                                {
+                                       f.Delete();
+                                }
+                                 catch (Exception ex)
+                                 {
+                                     TShock.Log.Error(ex.ToString());
+                                     Console.WriteLine(ex.StackTrace);
+                                 }
                                     if (verbose)
-                                        Console.WriteLine("Prune: " + f.Name);
+                                        Console.WriteLine("Prune: " + fileName);
                                     pruneCount++;
                                 }
                             }
@@ -198,14 +206,25 @@ namespace PruneLog
                 }
                 else
                 {
+                    string fileName;
                     for (int i = files.Count() - 1; i >= keepOnlyLogs; i--)
                     {
-                        if (!files[i].Name.Equals(TShock.Log.FileName))
+                        fileName = directoryInfo + "\\" + files[i].Name;
+                        if (!fileName.Equals(TShock.Log.FileName))
                         {
                             if (!preview)
-                                File.Delete(files[i].Name);
+                                try 
+                                {
+                                    File.Delete(fileName);
+                                }
+                                catch (Exception ex)
+                                {
+                                    TShock.Log.Error(ex.ToString());
+                                    Console.WriteLine(ex.StackTrace);
+                                }
+
                             if (verbose)
-                                Console.WriteLine("Prune: " + files[i].Name);
+                                Console.WriteLine("Prune: " + fileName);
                             pruneCount++;
                         }
                     }
@@ -213,57 +232,7 @@ namespace PruneLog
                 Console.WriteLine(pruneCount + " logs Pruned");
                 return;
             }
-            /*
-            if (arguments.Contains("-a") || arguments.Contains("-archive"))
-            {
-                string logFilename = TShock.Log.FileName;
-
-                DirectoryInfo directoryInfo = new DirectoryInfo(TShock.Config.LogPath);
-                FileInfo[] files = directoryInfo.GetFiles("*.log", SearchOption.AllDirectories).OrderBy(t => t.CreationTime).ToArray();
-
-                int archiveCount = 0;
-                using (ZipArchive zip = ZipFile.Open(archiveFileName, ZipArchiveMode.Create))
-                {
-                    if (pruneByDate)
-                    {
-                        DateTime keepDate = DateTime.Today.AddDays(-keepForDays);
-
-                        if (keepForDays > 0)
-                            foreach (FileInfo f in files)
-                            {
-                                if (!f.Name.Equals(TShock.Log.FileName))
-                                {
-                                    if (f.CreationTime < keepDate)
-                                    {
-                                        if (!preview)
-                                            zip.CreateEntryFromFile(f.Name, f.Name);
-                                        if (verbose)
-                                            Console.WriteLine("Archive: " + f.Name);
-                                        archiveCount++;
-                                    }
-                                }
-                            }
-                    }
-                    else
-                    {
-                        for (int i = files.Count() - 1; i >= keepOnlyLogs; i--)
-                        {
-                            if (!files[i].Name.Equals(TShock.Log.FileName))
-                            {
-                                if (!preview)
-                                    zip.CreateEntryFromFile(files[i].Name, files[i].Name);
-                                if (verbose)
-                                    Console.WriteLine("Archive: " + files[i].Name);
-                                archiveCount++;
-                            }
-                        }
-                    }
-                 }
-                Console.WriteLine(archiveCount + " logs archived to " + archiveFileName);
-
-            }
-             * */
-            Console.WriteLine(" Invalid PruneLog option:" + string.Join(" ", args.Parameters));
+             Console.WriteLine(" Invalid PruneLog option:" + string.Join(" ", args.Parameters));
         }
     }
     #region application specific commands
